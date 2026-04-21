@@ -36,6 +36,10 @@ impl Tray for KeyboardTray {
         vec![status_icon(self.connected)]
     }
 
+    fn activate(&mut self, _x: i32, _y: i32) {
+        let _ = self.tx.send(TrayEvent::Configure);
+    }
+
     fn menu(&self) -> Vec<MenuItem<Self>> {
         use ksni::menu::StandardItem;
         let tx = self.tx.clone();

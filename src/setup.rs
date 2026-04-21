@@ -108,42 +108,43 @@ impl SetupApp {
 }
 
 fn list_usb_devices() -> Vec<UsbDevice> {
-    let Ok(devices) = rusb::devices() else {
+    // The kernel exposes manufacturer/product strings in sysfs without requiring
+    // the device to be opened, so no udev rules or elevated permissions are needed.
+    let Ok(entries) = std::fs::read_dir("/sys/bus/usb/devices") else {
         return vec![];
     };
 
     let mut result = Vec::new();
 
-    for device in devices.iter() {
-        let Ok(desc) = device.device_descriptor() else {
-            continue;
+    for entry in entries.flatten() {
+        let base = entry.path();
+
+        let read = |name| -> Option<String> {
+            std::fs::read_to_string(base.join(name))
+                .ok()
+                .map(|s| s.trim().to_owned())
+                .filter(|s| !s.is_empty())
         };
 
-        let vendor_id = desc.vendor_id();
-        let product_id = desc.product_id();
+        let Some(vendor_str) = read("idVendor") else { continue };
+        let Some(product_str) = read("idProduct") else { continue };
 
-        let label = match device.open() {
-            Ok(handle) => {
-                let timeout = std::time::Duration::from_millis(200);
-                let manufacturer = handle
-                    .read_manufacturer_string_ascii(&desc)
-                    .unwrap_or_default();
-                let product = handle
-                    .read_product_string_ascii(&desc)
-                    .unwrap_or_else(|_| format!("{vendor_id:04x}:{product_id:04x}"));
-                let _ = timeout; // suppress unused warning — timeout used implicitly by rusb
-                if manufacturer.is_empty() {
-                    product
-                } else {
-                    format!("{manufacturer} {product}")
-                }
-            }
-            Err(_) => format!("{vendor_id:04x}:{product_id:04x}"),
+        let Ok(vendor_id) = u16::from_str_radix(&vendor_str, 16) else { continue };
+        let Ok(product_id) = u16::from_str_radix(&product_str, 16) else { continue };
+
+        let manufacturer = read("manufacturer").unwrap_or_default();
+        let product = read("product")
+            .unwrap_or_else(|| format!("{vendor_id:04x}:{product_id:04x}"));
+
+        let label = if manufacturer.is_empty() {
+            product
+        } else {
+            format!("{manufacturer} {product}")
         };
 
-        println!("{vendor_id}:{product_id} - {label}");
         result.push(UsbDevice { vendor_id, product_id, label });
     }
 
+    result.sort_by(|a, b| a.label.cmp(&b.label));
     result
 }

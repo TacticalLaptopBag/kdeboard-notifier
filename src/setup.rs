@@ -36,6 +36,7 @@ pub fn run() -> iced::Result {
         .theme(move |_| theme.clone())
         .default_font(kde.font)
         .window(iced::window::Settings {
+            size: iced::Size::new(600.0, 600.0),
             min_size: Some(iced::Size::new(325.0, 0.0)),
             ..Default::default()
         })

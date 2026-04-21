@@ -146,6 +146,8 @@ pub fn run(mut config: Config) -> ! {
         let connected = is_device_connected(config.vendor_id, config.product_id);
         handle.update(|t| t.connected = connected);
 
+        println!("device connected: {}", connected);
+
         std::thread::sleep(Duration::from_secs(1));
     }
 }

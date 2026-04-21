@@ -3,8 +3,8 @@
 A basic Rust application that shows a USB device connection status via a system tray icon.
 This was meant to easily determine if a USB switch was pointed to a device or not.
 
-NOTE: This application is entirely vibe coded.
-I've read the code enough to understand what it does, but there are probably better ways to do this.
+NOTE: This application is entirely vibe coded. Since I did not write this code, it will remain unlicensed.
+I've read and tested the code enough to understand what it does, but there are probably better ways to do this.
 Oh well! :shrug:
 
 ## Build

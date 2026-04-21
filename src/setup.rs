@@ -24,6 +24,7 @@ pub struct SetupApp {
 #[derive(Debug, Clone)]
 pub enum Message {
     Select(usize),
+    Refresh,
     Save,
     Cancel,
 }
@@ -55,6 +56,26 @@ impl SetupApp {
                 self.selected = Some(i);
                 Task::none()
             }
+            Message::Refresh => {
+                let prev_selected = self.selected
+                    .map(|i| (self.devices[i].vendor_id, self.devices[i].product_id));
+
+                self.devices = list_usb_devices();
+
+                self.saved_index = Config::load().and_then(|cfg| {
+                    self.devices.iter().position(|d| {
+                        d.vendor_id == cfg.vendor_id && d.product_id == cfg.product_id
+                    })
+                });
+
+                self.selected = prev_selected
+                    .and_then(|(vid, pid)| {
+                        self.devices.iter().position(|d| d.vendor_id == vid && d.product_id == pid)
+                    })
+                    .or(self.saved_index);
+
+                Task::none()
+            }
             Message::Save => {
                 if let Some(i) = self.selected {
                     let dev = &self.devices[i];
@@ -73,7 +94,14 @@ impl SetupApp {
     }
 
     fn view(&self) -> Element<'_, Message> {
-        let header = text("Select your keyboard from the connected USB devices below.").size(14);
+        let header = Row::new()
+            .push(
+                text("Select your keyboard from the connected USB devices below.")
+                    .size(14)
+                    .width(Length::Fill),
+            )
+            .push(button(text("Refresh Devices")).on_press(Message::Refresh))
+            .align_y(iced::Alignment::Center);
 
         let device_rows: Vec<Element<Message>> = if self.devices.is_empty() {
             vec![text("No USB devices found. Ensure the keyboard is connected and try again.").into()]

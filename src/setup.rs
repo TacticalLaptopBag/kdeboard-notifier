@@ -94,14 +94,7 @@ impl SetupApp {
     }
 
     fn view(&self) -> Element<'_, Message> {
-        let header = Row::new()
-            .push(
-                text("Select your keyboard from the connected USB devices below.")
-                    .size(14)
-                    .width(Length::Fill),
-            )
-            .push(button(text("Refresh Devices")).on_press(Message::Refresh))
-            .align_y(iced::Alignment::Center);
+        let header = text("Select your keyboard from the connected USB devices below.").size(14);
 
         let device_rows: Vec<Element<Message>> = if self.devices.is_empty() {
             vec![text("No USB devices found. Ensure the keyboard is connected and try again.").into()]
@@ -131,9 +124,12 @@ impl SetupApp {
         };
 
         let actions = Row::new()
+            .push(button(text("Refresh Devices")).on_press(Message::Refresh))
+            .push(iced::widget::horizontal_space())
             .push(cancel_btn)
             .push(save_btn)
-            .spacing(8);
+            .spacing(8)
+            .align_y(iced::Alignment::Center);
 
         container(
             column![header, device_list, actions]

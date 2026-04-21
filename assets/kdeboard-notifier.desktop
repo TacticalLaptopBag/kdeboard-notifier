@@ -1,0 +1,16 @@
+[Desktop Entry]
+Type=Application
+Name=kdeboard-notifier
+GenericName=Keyboard Connection Monitor
+Comment=System tray indicator for USB keyboard connection status
+Exec=kdeboard-notifier
+Icon=input-keyboard
+Categories=Utility;System;
+Keywords=keyboard;usb;tray;monitor;
+Terminal=false
+StartupNotify=false
+X-KDE-StartupNotify=false
+
+[Desktop Action Configure]
+Name=Configure Keyboard...
+Exec=kdeboard-notifier --configure

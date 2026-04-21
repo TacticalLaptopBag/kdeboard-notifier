@@ -20,13 +20,13 @@ Oh well! :shrug:
 Ensure `flatpak` and `flatpak-builder` are installed, then run these commands:
 ```bash
 ./generate-flatpak-sources.sh
-flatpak --user install -y org.freedesktop.Sdk.Extension.rust-stable/x86_64/24.08 org.kde.Platform/x86_64/6.8 org.kde.Sdk/x86_64/6.8
+flatpak --user install -y org.freedesktop.Sdk.Extension.rust-stable//24.08 org.kde.Platform//6.9 org.kde.Sdk//6.9
 flatpak-builder --force-clean --repo=repo.flatpak.d build.flatpak.d io.github.tacticallaptopbag.KDEBoardNotifier.yaml
 flatpak build-bundle repo.flatpak.d kdeboard-notifier.flatpak io.github.tacticallaptopbag.KDEBoardNotifier
 ```
 This will create a `kdeboard-notifier.flatpak` file, which can be installed with
 ```bash
-flatpak --user install ./kdeboard-notifier.flatpak
+flatpak --user install kdeboard-notifier.flatpak
 ```
 
 

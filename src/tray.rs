@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 use std::time::Duration;
 
 use ksni::{Icon, MenuItem, Tray, TrayService};
@@ -8,6 +8,52 @@ use signal_hook::consts::SIGHUP;
 use signal_hook::flag as signal_flag;
 
 use crate::config::Config;
+
+static CONNECTED_ICONS: LazyLock<Vec<Icon>> = LazyLock::new(|| {
+    render_svg_icon(include_bytes!("../assets/keyboard-connected.svg"))
+});
+
+static DISCONNECTED_ICONS: LazyLock<Vec<Icon>> = LazyLock::new(|| {
+    render_svg_icon(include_bytes!("../assets/keyboard-disconnected.svg"))
+});
+
+fn render_svg_icon(data: &[u8]) -> Vec<Icon> {
+    [16u32, 22].map(|size| render_at(data, size)).to_vec()
+}
+
+fn render_at(data: &[u8], size: u32) -> Icon {
+    use resvg::{tiny_skia, usvg};
+
+    let tree = usvg::Tree::from_data(data, &usvg::Options::default())
+        .expect("invalid SVG");
+
+    let svg = tree.size();
+    let scale = size as f32 / svg.width().max(svg.height());
+    let mut pixmap = tiny_skia::Pixmap::new(size, size).expect("zero-size pixmap");
+    resvg::render(&tree, tiny_skia::Transform::from_scale(scale, scale), &mut pixmap.as_mut());
+
+    // tiny-skia pixels are RGBA premultiplied; SNI wants ARGB32 straight alpha.
+    let argb: Vec<u8> = pixmap
+        .pixels()
+        .iter()
+        .flat_map(|p| {
+            let a = p.alpha();
+            let (r, g, b) = if a == 0 {
+                (0, 0, 0)
+            } else {
+                let af = a as u32;
+                (
+                    (p.red() as u32 * 255 / af) as u8,
+                    (p.green() as u32 * 255 / af) as u8,
+                    (p.blue() as u32 * 255 / af) as u8,
+                )
+            };
+            [a, r, g, b]
+        })
+        .collect();
+
+    Icon { width: size as i32, height: size as i32, data: argb }
+}
 
 enum TrayEvent {
     Configure,
@@ -33,7 +79,11 @@ impl Tray for KeyboardTray {
     }
 
     fn icon_pixmap(&self) -> Vec<Icon> {
-        vec![status_icon(self.connected)]
+        if self.connected {
+            CONNECTED_ICONS.clone()
+        } else {
+            DISCONNECTED_ICONS.clone()
+        }
     }
 
     fn activate(&mut self, _x: i32, _y: i32) {
@@ -113,28 +163,3 @@ fn is_device_connected(vendor_id: u16, product_id: u16) -> bool {
         .unwrap_or(false)
 }
 
-fn status_icon(connected: bool) -> Icon {
-    const SIZE: i32 = 22;
-    let (r, g, b): (u8, u8, u8) = if connected { (40, 200, 40) } else { (120, 120, 120) };
-    let cx = SIZE / 2;
-    let cy = SIZE / 2;
-    let radius_sq = (SIZE / 2 - 2).pow(2);
-
-    let mut data = vec![0u8; (SIZE * SIZE * 4) as usize];
-
-    for y in 0..SIZE {
-        for x in 0..SIZE {
-            let dx = x - cx;
-            let dy = y - cy;
-            if dx * dx + dy * dy <= radius_sq {
-                let i = ((y * SIZE + x) * 4) as usize;
-                data[i] = 255; // A
-                data[i + 1] = r; // R
-                data[i + 2] = g; // G
-                data[i + 3] = b; // B
-            }
-        }
-    }
-
-    Icon { width: SIZE, height: SIZE, data }
-}

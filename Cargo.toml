@@ -8,6 +8,7 @@ anyhow = "1"
 dirs = "5"
 iced = { version = "0.13", default-features = false, features = ["tiny-skia"] }
 ksni = "0.2"
+resvg = "0.47.0"
 rusb = "0.9"
 serde = { version = "1", features = ["derive"] }
 signal-hook = "0.3"

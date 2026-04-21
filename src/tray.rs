@@ -146,22 +146,21 @@ pub fn run(mut config: Config) -> ! {
         let connected = is_device_connected(config.vendor_id, config.product_id);
         handle.update(|t| t.connected = connected);
 
-        println!("device connected: {}", connected);
-
         std::thread::sleep(Duration::from_secs(1));
     }
 }
 
 fn is_device_connected(vendor_id: u16, product_id: u16) -> bool {
-    rusb::devices()
-        .ok()
-        .map(|list| {
-            list.iter().any(|d| {
-                d.device_descriptor()
-                    .map(|desc| desc.vendor_id() == vendor_id && desc.product_id() == product_id)
-                    .unwrap_or(false)
-            })
-        })
-        .unwrap_or(false)
+    let target_vendor = format!("{:04x}", vendor_id);
+    let target_product = format!("{:04x}", product_id);
+    let Ok(entries) = std::fs::read_dir("/sys/bus/usb/devices") else {
+        return false;
+    };
+    entries.flatten().any(|e| {
+        let p = e.path();
+        let v = std::fs::read_to_string(p.join("idVendor")).unwrap_or_default();
+        let d = std::fs::read_to_string(p.join("idProduct")).unwrap_or_default();
+        v.trim() == target_vendor && d.trim() == target_product
+    })
 }
 

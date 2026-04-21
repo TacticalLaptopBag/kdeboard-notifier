@@ -12,9 +12,7 @@ sdk-extensions:
 command: kdeboard-notifier
 
 finish-args:
-  # USB device enumeration via libusb (rusb)
-  - --device=all
-  # Read USB device names from sysfs in the setup UI
+  # Read USB device names from sysfs (setup UI and connection polling)
   - --filesystem=/sys/bus/usb/devices:ro
   # KDE color scheme and font settings for theming
   - --filesystem=xdg-config/kdeglobals:ro

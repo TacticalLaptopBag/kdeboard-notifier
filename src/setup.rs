@@ -35,6 +35,10 @@ pub fn run() -> iced::Result {
     iced::application("kdeboard-notifier - Select Keyboard", SetupApp::update, SetupApp::view)
         .theme(move |_| theme.clone())
         .default_font(kde.font)
+        .window(iced::window::Settings {
+            min_size: Some(iced::Size::new(325.0, 0.0)),
+            ..Default::default()
+        })
         .run_with(SetupApp::new)
 }
 

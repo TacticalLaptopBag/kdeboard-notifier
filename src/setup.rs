@@ -12,10 +12,13 @@ pub struct UsbDevice {
     pub label: String,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct SetupApp {
     devices: Vec<UsbDevice>,
     selected: Option<usize>,
+    /// Index of the device that matches the on-disk config, if any.
+    /// Used to suppress Save when nothing has changed.
+    saved_index: Option<usize>,
 }
 
 #[derive(Debug, Clone)]
@@ -36,10 +39,13 @@ pub fn run() -> iced::Result {
 
 impl SetupApp {
     fn new() -> (Self, Task<Message>) {
-        let app = SetupApp {
-            devices: list_usb_devices(),
-            selected: None,
-        };
+        let devices = list_usb_devices();
+        let saved_index = Config::load().and_then(|cfg| {
+            devices
+                .iter()
+                .position(|d| d.vendor_id == cfg.vendor_id && d.product_id == cfg.product_id)
+        });
+        let app = SetupApp { devices, selected: saved_index, saved_index };
         (app, Task::none())
     }
 
@@ -89,7 +95,8 @@ impl SetupApp {
         .height(Length::Fill);
 
         let cancel_btn = button(text("Cancel")).on_press(Message::Cancel);
-        let save_btn = if self.selected.is_some() {
+        let save_enabled = self.selected.is_some() && self.selected != self.saved_index;
+        let save_btn = if save_enabled {
             button(text("Save")).on_press(Message::Save)
         } else {
             button(text("Save"))

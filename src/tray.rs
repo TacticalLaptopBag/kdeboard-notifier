@@ -1,4 +1,5 @@
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -8,9 +9,14 @@ use signal_hook::flag as signal_flag;
 
 use crate::config::Config;
 
+enum TrayEvent {
+    Configure,
+}
+
 struct KeyboardTray {
     connected: bool,
     config: Config,
+    tx: Sender<TrayEvent>,
 }
 
 impl Tray for KeyboardTray {
@@ -32,12 +38,23 @@ impl Tray for KeyboardTray {
 
     fn menu(&self) -> Vec<MenuItem<Self>> {
         use ksni::menu::StandardItem;
-        vec![StandardItem {
-            label: "Quit".into(),
-            activate: Box::new(|_| std::process::exit(0)),
-            ..Default::default()
-        }
-        .into()]
+        let tx = self.tx.clone();
+        vec![
+            StandardItem {
+                label: "Configure...".into(),
+                activate: Box::new(move |_| {
+                    let _ = tx.send(TrayEvent::Configure);
+                }),
+                ..Default::default()
+            }
+            .into(),
+            StandardItem {
+                label: "Quit".into(),
+                activate: Box::new(|_| std::process::exit(0)),
+                ..Default::default()
+            }
+            .into(),
+        ]
     }
 }
 
@@ -45,15 +62,27 @@ pub fn run(mut config: Config) -> ! {
     let reload = Arc::new(AtomicBool::new(false));
     signal_flag::register(SIGHUP, reload.clone()).expect("failed to register SIGHUP handler");
 
+    let (tx, rx): (Sender<TrayEvent>, Receiver<TrayEvent>) = mpsc::channel();
+
     let service = TrayService::new(KeyboardTray {
         connected: false,
         config: config.clone(),
+        tx,
     });
     let handle = service.handle();
     service.spawn();
 
     loop {
         if reload.swap(false, Ordering::Relaxed) {
+            if let Some(new_cfg) = Config::load() {
+                config = new_cfg.clone();
+                handle.update(|t| t.config = new_cfg);
+            }
+        }
+
+        if let Ok(TrayEvent::Configure) = rx.try_recv() {
+            let exe = std::env::current_exe().expect("could not find current exe");
+            let _ = std::process::Command::new(exe).arg("--configure").spawn().and_then(|mut c| c.wait());
             if let Some(new_cfg) = Config::load() {
                 config = new_cfg.clone();
                 handle.update(|t| t.config = new_cfg);

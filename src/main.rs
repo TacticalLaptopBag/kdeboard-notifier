@@ -3,10 +3,17 @@ mod setup;
 mod tray;
 
 fn main() {
-    if config::Config::load().is_none() {
+    let configure_only = std::env::args().any(|a| a == "--configure");
+
+    if configure_only || config::Config::load().is_none() {
         setup::run().expect("setup UI failed");
+        if configure_only {
+            return;
+        }
     }
 
-    let config = config::Config::load().expect("no config found; re-run to reconfigure");
+    let Some(config) = config::Config::load() else {
+        return; // user cancelled setup with no prior config
+    };
     tray::run(config);
 }

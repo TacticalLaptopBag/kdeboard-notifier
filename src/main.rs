@@ -1,4 +1,5 @@
 mod config;
+mod kde_theme;
 mod setup;
 mod tray;
 

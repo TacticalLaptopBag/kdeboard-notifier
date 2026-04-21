@@ -26,7 +26,11 @@ pub enum Message {
 }
 
 pub fn run() -> iced::Result {
+    let kde = crate::kde_theme::load();
+    let theme = kde.theme;
     iced::application("kdeboard-notifier - Select Keyboard", SetupApp::update, SetupApp::view)
+        .theme(move |_| theme.clone())
+        .default_font(kde.font)
         .run_with(SetupApp::new)
 }
 
